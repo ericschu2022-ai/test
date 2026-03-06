@@ -24,7 +24,10 @@
 	    ROW("加州訂單", california_count)
 	    
    // 找出非美國的訂單有多少張
-   
+
+//更新新功能
+
+
  EVALUATE
   	var NotInUSA = COUNTROWS(
   	
