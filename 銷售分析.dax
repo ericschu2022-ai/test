@@ -1,0 +1,142 @@
+﻿EVALUATE
+//   COUNTROWS(Sales , AND( A , B ) )
+//   COUNTROWS(Sales , A && B )
+//   COUNTROWS(Sales , A && B && c && d )
+// 計算 訂單當中 是 usa 所賣出去的腳踏車的訂單數量
+  VAR BIKES_COUNT =  COUNTROWS( 
+            FILTER( SALES ,
+            
+                 AND( Sales[Country]="USA" , 
+                      Sales[Product category]="Bikes")
+                 )
+      )
+      RETURN
+        row("隸屬美國的訂單數量", BIKES_COUNT)
+        
+ 
+ EVALUATE
+    var california_count = COUNTROWS(
+     		FILTER(sales, 
+     		
+     		   sales[Country]="USA" && Sales[Product category]="Bikes" && sales[State]="California")
+     		   )
+	RETURN
+	    ROW("加州訂單", california_count)
+	    
+   // 找出非美國的訂單有多少張
+   
+ EVALUATE
+  	var NotInUSA = COUNTROWS(
+  	
+  		FILTER( sales , 
+  		        NOT( Sales[Country] = "USA")
+  		        )
+        )
+  RETURN
+     ROW("其他國家訂單", NotInUSA)
+     
+// 計算美國跟法國的訂單數量
+EVALUATE
+
+    ROW("美法訂單總數",
+    
+       COUNTROWS( 
+       
+          FILTER( sales, 
+       			  Sales[Country] in { "usa", "FRANCE"  }
+       			  )
+	   )
+	 )
+          
+EVALUATE
+  //判斷 sales[country] 中的國家名稱轉換成中文
+  // 在 table中新增一個欄位 顯示"國家中文" 把 USA 變成  美國
+  ADDCOLUMNS(sales, 
+       "國家中文",
+       SWITCH(
+           Sales[Country] ,    // 判斷目標(table[欄位])
+           "USA",     "美國",  //判斷 , 給值
+           "France",  "法國",
+           "Germany", "德國",
+           "其他"  // else 
+           )
+   )
+   
+ EVALUATE
+ 
+    ADDCOLUMNS( Sales,
+         "績效",
+         SWITCH( true , 
+         (Sales[Quantity] * Sales[Price per item] - sales[Sales plan] > 200) , "A+",
+         (Sales[Quantity] * Sales[Price per item] - sales[Sales plan] > 100) , "A",
+         "B")
+     )
+     
+     
+EVALUATE 
+// 使用位元運算方式求資料
+   row("第3台異常狀態" , bitand(13,2) )
+   
+EVALUATE
+// 計算四個國家分別占總體銷售額的 % 
+
+   // 先計算全部銷售金額
+   var total = sum( Sales[Sales fact])  // sales fact 已經先進行小計(數量x單價)
+  // var total2 = sum( Sales[Price per item] * Sales[Quantity]) // 錯誤 
+   var total2 = SUMX(Sales, Sales[Price per item] * Sales[Quantity])
+   // 統計四個國家的個別銷售
+   var usa = sumx( FILTER(Sales, [country]="usa") , [Price per item] * [Quantity])
+   var gem = sumx( FILTER(Sales, [country]="germany") , [Price per item] * [Quantity])
+   var fra = sumx( FILTER(Sales, [country]="france") , [Price per item] * [Quantity])
+   var gbr = sumx( FILTER(Sales, [country]="Great Britain") , [Price per item] * [Quantity])
+   
+   return 
+   { total,
+     round(usa/total,3)*100 & "%" ,
+     round(gem/total,3)*100 & "%"  , 
+     round(fra/total,3)*100 & "%"  , 
+     round(gbr/total,3)*100 & "%"  
+   }
+   
+EVALUATE
+// 計算每一筆銷售在該國跟全球所佔的 % 
+// 先把母體總額進行加總
+// 先計算全球銷售金額
+   var total = sum( Sales[Sales fact])  // sales fact 已經先進行小計(數量x單價)  
+   // 統計四個國家的個別銷售
+   var usa = sumx( FILTER(Sales, [country]="usa") , [Price per item] * [Quantity])
+   var gem = sumx( FILTER(Sales, [country]="germany") , [Price per item] * [Quantity])
+   var fra = sumx( FILTER(Sales, [country]="france") , [Price per item] * [Quantity])
+   var gbr = sumx( FILTER(Sales, [country]="Great Britain") , [Price per item] * [Quantity])
+   
+   // evaluate 跟 return 之間就是用來準備等一下要回傳的各種統計資料 準備好後再透過 return 回傳
+   
+RETURN
+  
+  topn( 10 ,
+  
+	  ADDCOLUMNS(Sales,
+	   "國家%",
+	   //計算該筆資料的比例
+	   // 先判斷該筆資料是哪個國家的銷售
+	   	SWITCH([COUNTRY],
+	   		"USA",
+	   			ROUND([Sales fact]/usa,5)*100 & "%",
+	   		"FRANCE",
+	   			ROUND([Sales fact]/fra,5)*100 & "%",	
+	   		"GERMANY",
+	   			ROUND([Sales fact]/gem,5)*100 & "%",
+			"GREAT BRITAIN",
+	   			ROUND([Sales fact]/gbr,5)*100 & "%",
+	        "異常"
+	     )
+	   
+	   ) ,
+	  
+  	[國家%] , desc 
+  )
+  
+//  ORDER BY [國家%] desc
+  
+	
+	
